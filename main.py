@@ -2,34 +2,63 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from random_striver_sheet_question_opener.v2 import SheetHandlerFactory
+from llm_service import LLMService
+from config.config import Config
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import httpx
+from fastapi import Request, HTTPException
 
 import json
 import logging
 
+from html_extractor import extract_html
+
 app = FastAPI()
+llm_service = LLMService(api_key=Config.OPEN_AI_KEY)
+
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
+SENDER_NAME = os.getenv("SENDER_NAME")
+
+if not BREVO_API_KEY or not SENDER_EMAIL or not SENDER_NAME or not RECEIVER_EMAIL:
+    raise EnvironmentError("Missing environment variables")
+
+isdm = Config.DEBUG
+# isdm = False
 
 
-class Item(BaseModel):
-    name: str
-    price: float
-    is_active: bool
+def dummy_send_email_request(subject: str, html_content: str) -> httpx.Response:
+    # console
+    print(f"Email subject: {subject}")
+    print(f"Email content: {html_content}")
+    return httpx.Response(200, json={"message": "Email sent successfully"})
 
 
-@app.post("/items/")
-async def create_item(item: Item):
-    # Process the received item
-    # Save it to the database or perform any other operations
-
-    # Return the processed item
-    return item
-
-
-@app.get("/items/{item_id}")
-async def get_item(item_id: int):
-    # Retrieve the item from the database using the item_id
-
-    # Return the retrieved item
-    return {"item_id": item_id}
+async def send_email_request(subject: str, html_content: str) -> httpx.Response:
+    if isdm:
+        return dummy_send_email_request(subject, html_content)
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "Accept": "application/json",
+                "Api-Key": BREVO_API_KEY,
+                "Content-Type": "application/json",
+            },
+            json={
+                "sender": {"email": SENDER_EMAIL, "name": SENDER_NAME},
+                "to": [{"email": RECEIVER_EMAIL}],
+                "subject": subject,
+                "htmlContent": html_content,
+            },
+        )
+    return response
 
 
 logger = logging.getLogger(__name__)
@@ -59,6 +88,10 @@ def process(self):
 async def random_question(sheet_type: str):
     handler = SheetHandlerFactory.create_handler(sheet_type)
     result = process(handler)
+    subject = handler.get_title(result["topic"])
+    htmlContent = llm_service.generate_response(handler.get_title(result["topic"]))
+    htmlContent = extract_html(htmlContent).strip()
+    response = await send_email_request(subject, htmlContent)
 
     return result
 
