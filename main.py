@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from random_striver_sheet_question_opener.v2 import SheetHandlerFactory
+from random_striver_sheet_question_opener.v2 import SheetHandlerFactory, SheetHandler
 from llm_service import LLMService
 from config.config import Config
 
@@ -103,6 +103,36 @@ async def daily_questions(sheet_type: str):
         result = []
         for _ in range(5):
             result.append(process(handler))
+        return result
+    except Exception as e:
+        logger.exception(e)
+        return {"error": "An error occurred", "message": str(e)}
+
+
+def generate_htmlContent(topics, handler: SheetHandler) -> str:
+    htmlContent = "<html><head><style>p { margin-top:0; } h2{margin-bottom:0;}</style></head><body>"
+    for topic in topics:
+        title = handler.get_title(topic["topic"])
+        htmlContent += f"<h2>{title}</h2>"
+        link = f"https://www.google.com/search?q={title}"
+        link = handler.create_link(title)
+        htmlContent += f"<p><a href={link}>Search on Google</a></p>"
+
+    htmlContent += "</body></html>"
+    return htmlContent
+
+
+# email daily questions
+@app.get("/email_daily_bites/{sheet_type}")
+async def email_daily_questions(sheet_type: str):
+    try:
+        handler = SheetHandlerFactory.create_handler(sheet_type)
+        result = []
+        for _ in range(5):
+            result.append(process(handler))
+        subject = "Daily Bites"
+        htmlContent = generate_htmlContent(result, handler)
+        response = await send_email_request(subject, htmlContent)
         return result
     except Exception as e:
         logger.exception(e)
