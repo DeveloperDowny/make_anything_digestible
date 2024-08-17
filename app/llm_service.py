@@ -1,8 +1,8 @@
 from openai import OpenAI
 import logging
-from config.config import Config
+from app.config.config import Config
 
-from dummy_data import dumm_htmlContent
+from app.dummy_data import dumm_htmlContent
 
 logger = logging.getLogger(__name__)
 

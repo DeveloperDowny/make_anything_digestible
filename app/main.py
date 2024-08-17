@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from random_striver_sheet_question_opener.v2 import SheetHandlerFactory, SheetHandler
-from llm_service import LLMService
-from config.config import Config
+from app.random_striver_sheet_question_opener.v2 import SheetHandlerFactory, SheetHandler
+from app.llm_service import LLMService
+from app.config.config import Config
 
 import os
 from dotenv import load_dotenv
@@ -16,7 +16,7 @@ from fastapi import Request, HTTPException
 import json
 import logging
 
-from html_extractor import extract_html
+from app.html_extractor import extract_html
 
 app = FastAPI()
 llm_service = LLMService(api_key=Config.OPEN_AI_KEY)
