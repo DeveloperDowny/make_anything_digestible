@@ -101,7 +101,7 @@ async def daily_questions(sheet_type: str):
     try:
         handler = SheetHandlerFactory.create_handler(sheet_type)
         result = []
-        for _ in range(5):
+        for _ in range(2):
             result.append(process(handler))
         return result
     except Exception as e:
@@ -128,7 +128,7 @@ async def email_daily_questions(sheet_type: str):
     try:
         handler = SheetHandlerFactory.create_handler(sheet_type)
         result = []
-        for _ in range(5):
+        for _ in range(2):
             result.append(process(handler))
         subject = "Daily Bites"
         htmlContent = generate_htmlContent(result, handler)
